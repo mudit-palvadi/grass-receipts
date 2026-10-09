@@ -43,17 +43,19 @@ Grass](https://dev.to/challenges/hacktoberfest-week1-2026-10-05).
 
 ## What is actually here
 
+Status as of the first install on a realme RMX3853 (Android 16):
+
 | Piece | State |
 | --- | --- |
-| Receipt prompt, JSON-free parse, validation, template fallback | **Unit tested** — 23 tests, no device needed |
+| Receipt prompt, parse, validation, template fallback | **Unit tested** — 32 tests, no device needed |
 | Torn-edge clipper and dashed rules | **Unit tested** |
-| Model install / download / readiness | **Verified against the plugin's own API**, not yet run on hardware |
-| Sensor capture (steps, longest stop) | Written, **not yet verified on hardware** |
-| The `TOUCHING GRASS` → `I'M BACK` flow | Written, **not yet run end to end on a device** |
+| Receipt layout at the 32-column limit | **Widget-tested**, no overflow |
+| Setup screen, model picker, download progress | **Runs on hardware** — Qwen3 0.6B download reached 50% and climbing |
+| Model install / readiness wiring | **Wired**, download verified in progress |
+| Sensor capture (steps, longest stop) | Written, **not yet exercised outdoors** |
+| The `TOUCHING GRASS` → `I'M BACK` → receipt flow | Written, **not yet run end to end outdoors** |
 
-Nothing here has been run on a phone yet, so the honest version of "it works"
-is: the logic is tested, the plugin calls match the documented interface, and
-the first launch will tell us the rest.
+An install and a screenshot of the setup screen are in `test/golden/`.
 
 ## The one rule that matters
 
@@ -144,8 +146,16 @@ phone. Choosing Gemma adds a token field on the setup screen; it is held in
 memory for the length of one download and never written to disk.
 
 ```bash
-flutter test           # 23 tests, no device or model needed
+flutter test           # 32 tests, no device or model needed
 flutter analyze        # clean
+```
+
+The two `receipt_golden_test.dart` goldens are separate: they need a device
+pixel density to render at, and their PNG doubles as the picture in the DEV
+write-up.
+
+```bash
+flutter test --update-goldens test/receipt_golden_test.dart
 ```
 
 ## Known limits, stated up front

@@ -47,9 +47,6 @@ dependencies:
   # first outdoor demo would print "0x STEPS".
   permission_handler: ^12.0.0
 
-  # Sharing the receipt as an image.
-  share_plus: ^10.0.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
