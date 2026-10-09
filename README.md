@@ -123,6 +123,15 @@ Each spec names its file explicitly. That is not fussiness: the resolver
 infers a conventional filename when you leave it out, 404s, and reports
 "Model not found", which reads like a bad repo id.
 
+That table is a claim, so it is checkable rather than asserted. A byte-range
+request against each file, with no credentials at all:
+
+```
+Qwen3 0.6B    -> HTTP 206  (partial content, served)
+SmolLM2 360M  -> HTTP 206  (partial content, served)
+Gemma 3 1B    -> HTTP 401  (licence not accepted)
+```
+
 ## Running it
 
 ```bash
