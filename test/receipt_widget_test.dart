@@ -91,9 +91,12 @@ void main() {
       expect(find.text('43x MINUTES AWAY FROM THE SCREEN'), findsOne);
       expect(find.textContaining(r'$0.00'), findsOne);
       expect(find.text('GRASS TOUCHED'), findsOne);
+      // The last line the printer says is the signoff. There is no
+      // "generated on device" footer: a legal notice on the bottom of a joke
+      // is the machine explaining itself.
       expect(
         find.text('GENERATED ON DEVICE. NO SERVER, NO ACCOUNT, NO SIGNAL.'),
-        findsOne,
+        findsNothing,
       );
     });
 

@@ -1,4 +1,7 @@
 # Grass Receipts
+lines; the idea is older than both projects.
+Flutter, and the inventor is credited rather than ignored. The maths is three
+# Grass Receipts
 
 **I touched grass and all I got was this absurd receipt.**
 
@@ -28,10 +31,6 @@ YOUR REVIEW
 
 SIGNOFF
 Come back tomorrow. Grass misses you.
-
-
-     GENERATED ON DEVICE. NO SERVER,
-        NO ACCOUNT, NO SIGNAL.
 ```
 
 The screen is the shortest part of the experience, which is the whole point:
@@ -56,6 +55,23 @@ Status as of the first install on a realme RMX3853 (Android 16):
 | The `TOUCHING GRASS` → `I'M BACK` → receipt flow | Written, **not yet run end to end outdoors** |
 
 An install and a screenshot of the setup screen are in `test/golden/`.
+
+## The printing
+
+The receipt does not appear already printed. It feeds out of the slot in
+**14 discrete steps** over 1.7 seconds, with a dark band tracking its leading
+edge while it is still inside the machine.
+
+The steps are the part that matters. A single eased glide reads as a web page
+loading; the jumps read as a roller tick-tick-ticking. Each step reveals
+another ~1/14th of the paper, so the header prints first and the torn edge
+appears last, which is also the correct order for a thermal roll.
+
+- `PrintingReveal` in `lib/ui/widgets/printer_chassis.dart` — the `Align` with
+  an animated `heightFactor`, plus the quantised fraction.
+- `animate: false` skips it entirely, for anyone with motion sensitivity on.
+- Both steps are covered by `test/receipt_golden_test.dart`, whose PNG is the
+  picture in the write-up.
 
 ## The one rule that matters
 

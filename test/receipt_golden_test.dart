@@ -1,16 +1,18 @@
 /// Captures the receipt as a PNG.
 ///
-/// This is not coverage for its own sake. A DEV post needs a picture of the
-/// thing, and a screenshot needs a device I do not have here — so the receipt
-/// is rendered to a golden file instead and the same command produces it on
-/// any machine. It also guards the geometry of the torn edge and the paper:
-/// a future change that moves a tooth depth or a dash width fails here.
+/// Not coverage for its own sake. A DEV post needs a picture of the thing, and
+/// a screenshot needs a device — so the receipt is rendered here instead, and
+/// the same command reproduces it on any machine. It also guards the geometry
+/// of the torn edge and the paper: a change that moves a tooth depth, a dash
+/// width or a padding fails here.
 ///
 /// Regenerate with:
 ///
 ///   flutter test --update-goldens test/receipt_golden_test.dart
 ///
-/// The committed PNGs live in test/golden/.
+/// Note the surface size is set explicitly rather than relying on the default
+/// 800x600, which clips a six-line receipt mid-footer. The PNG in this
+/// directory is the picture used in the write-up.
 library;
 
 import 'package:flutter/material.dart';
@@ -24,8 +26,8 @@ final DateTime kEndedAt = DateTime.utc(2026, 10, 9, 16, 47);
 
 /// The receipt the app would print for a real 43-minute walk.
 ///
-/// Text lines sit at the 32-column limit, so the golden is also a check that
-/// the widest legal receipt still fits the paper.
+/// Lines sit at the 32-column limit, so the golden is also a check that the
+/// widest legal receipt still fits the paper.
 Receipt sampleReceipt() => Receipt(
       lines: const [
         ReceiptLine(qty: 1234, item: 'STEPS, ON YOUR GOOD LEG'),
@@ -45,27 +47,26 @@ Receipt sampleReceipt() => Receipt(
       ),
     );
 
+/// Tall enough for the whole receipt plus the machine above it.
+const Size kSurface = Size(420, 1600);
+
 void main() {
   testWidgets('receipt golden', (tester) async {
-    // A phone's width, so the layout matches what a person will look at.
-    tester.view
-      ..physicalSize = const Size(1080, 2400)
-      ..devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
+    await tester.binding.setSurfaceSize(kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           backgroundColor: const Color(0xFF101015),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: ReceiptPaper(receipt: sampleReceipt()),
-            ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ReceiptPaper(receipt: sampleReceipt()),
           ),
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     await expectLater(
       find.byType(ReceiptPaper),
@@ -74,28 +75,25 @@ void main() {
   });
 
   testWidgets('printer golden', (tester) async {
-    tester.view
-      ..physicalSize = const Size(1080, 2400)
-      ..devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
+    await tester.binding.setSurfaceSize(kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           backgroundColor: const Color(0xFF101015),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: PrinterChassis(
-                stage: PrinterStage.done,
-                statusText: 'Receipt printed',
-                paper: ReceiptPaper(receipt: sampleReceipt()),
-              ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: PrinterChassis(
+              stage: PrinterStage.done,
+              statusText: 'Receipt printed',
+              paper: ReceiptPaper(receipt: sampleReceipt()),
             ),
           ),
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     await expectLater(
       find.byType(PrinterChassis),

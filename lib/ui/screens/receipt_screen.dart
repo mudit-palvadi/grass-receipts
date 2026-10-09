@@ -26,6 +26,10 @@ import '../widgets/printer_chassis.dart';
 import '../widgets/receipt_kit.dart';
 import '../widgets/receipt_paper.dart';
 
+/// The one colour that means "go": the go-outside button, the download button,
+/// and the machine's status dot once a receipt is printed.
+const Color kAccent = Color(0xFF5FC98A);
+
 /// Ink for the blank strip of paper still in the machine.
 const Color kPaperBlankInk = Color(0xFFCDBFB2);
 
@@ -291,11 +295,14 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
 
   Widget _printed() {
     final receipt = _receipt;
+
+    // While the model is still writing there is no paper yet. The machine sits
+    // with its window spinning and an empty slot, which is the whole wait.
     if (receipt == null) {
       return PrinterChassis(
         stage: PrinterStage.printing,
         statusText: _status,
-        paper: _paperPlaceholder(),
+        paper: const _EmptyPaper(),
       );
     }
 
@@ -305,25 +312,23 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         PrinterChassis(
           stage: PrinterStage.done,
           statusText: _status,
-          paper: ReceiptPaper(receipt: receipt),
+          // The receipt feeds out of the slot in steps rather than appearing
+          // already printed. This is the one piece of motion in the app.
+          paper: PrintingReveal(receipt: receipt, animate: true),
         ),
         if (receipt.usedFallback) ...[
           const SizedBox(height: 14),
           _fallbackNotice(receipt.rejected),
         ],
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
         _actionButton(
           label: 'AGAIN',
           onPressed: _reset,
-          color: const Color(0xFFE8B84B),
-          foreground: const Color(0xFF241B04),
+          color: kAccent,
+          foreground: const Color(0xFF0D1F15),
         ),
       ],
     );
-  }
-
-  Widget _paperPlaceholder() {
-    return const SizedBox(height: 120, width: double.infinity);
   }
 
   Widget _fallbackNotice(ReceiptRejection? rejection) {
@@ -505,6 +510,27 @@ class _BlankPaper extends StatelessWidget {
             DashedReceiptRule(height: 10, color: kPaperBlankInk),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The slot with nothing coming out of it yet.
+///
+/// Deliberately the width of the slot and almost no height: a wide blank block
+/// while the model thinks reads as a bug, whereas a narrow stub reads as a
+/// printer between jobs.
+class _EmptyPaper extends StatelessWidget {
+  const _EmptyPaper();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipPath(
+      clipper: const TornPaperClipper(),
+      child: Container(
+        height: 26,
+        width: 200,
+        color: kPaperColor,
       ),
     );
   }
