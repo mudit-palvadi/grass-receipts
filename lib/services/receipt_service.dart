@@ -361,7 +361,7 @@ NATURE: ${facts.minutesLabel} OFF THE GRID. THE BIRDS WON.
       final chat = await model.createChat(
         isThinking: false,
         modelType: spec.modelType,
-        maxOutputTokens: 512,
+        maxOutputTokens: spec.maxTokens,
       );
       try {
         final first = await _turn(chat, buildPrompt(facts));
@@ -426,7 +426,7 @@ NATURE: ${facts.minutesLabel} OFF THE GRID. THE BIRDS WON.
       (model) => model.createChat(
         isThinking: false,
         modelType: spec.modelType,
-        maxOutputTokens: 512,
+        maxOutputTokens: spec.maxTokens,
       ),
     );
     try {

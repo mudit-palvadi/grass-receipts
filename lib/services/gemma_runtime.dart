@@ -41,6 +41,7 @@ class ModelSpec {
     required this.sizeMb,
     required this.requiresToken,
     required this.note,
+    this.maxTokens = 512,
   });
 
   final String id;
@@ -58,6 +59,13 @@ class ModelSpec {
   /// Approximate download size, for the setup screen.
   final int sizeMb;
 
+  /// How many tokens the model is allowed to generate for one receipt.
+  ///
+  /// Per-spec because a thinking model spends its whole budget thinking unless
+  /// the budget is large enough for the thinking *and* the answer. Qwen3 at 512
+  /// never reached the receipt; at 3072 it does.
+  final int maxTokens;
+
   /// True when the repo is gated behind a licence a token must be accepted for.
   final bool requiresToken;
 
@@ -73,8 +81,11 @@ class ModelSpec {
     fileType: ModelFileType.litertlm,
     sizeMb: 329,
     requiresToken: false,
-    note: 'No account, no token. But it thinks before it answers, and there '
-        'is no way to stop it here.',
+    // Thinking has to end before the answer starts, so the budget has to be
+    // large enough for both. 512 was never enough: it spent the whole thing
+    // thinking and never reached the receipt.
+    maxTokens: 3072,
+    note: 'Thinks before it answers. Given a big budget, it gets there.',
   );
 
   static const ModelSpec smolLM2 = ModelSpec(
@@ -86,8 +97,8 @@ class ModelSpec {
     fileType: ModelFileType.litertlm,
     sizeMb: 356,
     requiresToken: false,
-    note: 'The default: not a thinking model, ungated, and fast enough to '
-        'answer between two taps.',
+    note: 'Not a thinking model, but the engine rejects this file. See the '
+        'note below.',
   );
 
   static const ModelSpec gemma3 = ModelSpec(
@@ -105,9 +116,11 @@ class ModelSpec {
 
   static const List<ModelSpec> all = [qwen3, smolLM2, gemma3];
 
-  /// The default, because it needs nothing from the person running it *and*
-  /// actually answers: Qwen3 is the thinking-model trap described on its spec.
-  static const ModelSpec defaultSpec = smolLM2;
+  /// Qwen is the model that actually works on this stack: it loads on the
+  /// engine and, given a budget large enough for its thinking and the answer,
+  /// it answers. SmolLM2's file is rejected as invalid by LiteRT-LM, and Gemma
+  /// is gated — so Qwen3 is the default, with the token budget to match.
+  static const ModelSpec defaultSpec = qwen3;
 
   static ModelSpec byId(String id) =>
       all.firstWhere((m) => m.id == id, orElse: () => defaultSpec);
