@@ -3,21 +3,28 @@
 /// Specification: the challenge prompt for Hacktoberfest Open-Source AI
 /// Challenge Week 1 ("Touch Grass", https://dev.to/challenges/hacktoberfest-week1-2026-10-05).
 ///
-/// The single most important property of this file is that **Gemma never gets to
-/// decide a number.** Sensors measure steps and minutes; the model supplies only
-/// the item names, the review and the signoff. The two measured lines are built
-/// here and handed back unmodified, so a model that says "1x STEPS" cannot
-/// overwrite the pedometer. A 1B model will occasionally ignore the format, and
-/// an invented quantity is worse than a dull one: the joke dies on contact with
-/// a number the walker knows is wrong.
+/// The single most important property of this file is that **the model's claim
+/// is bounded, not trusted.** The phone measures steps, minutes and the longest
+/// standstill. The model supplies the verdict on the walk, the item quantities,
+/// the nature line and the comedy. Its quantities cannot be verified — nobody
+/// knows how many birds there were — but they *can* be checked for being
+/// possible, and `qty <= 1 + minutes` is the one rule [parseOutput] enforces. A
+/// ten-minute walk cannot claim twenty birds.
 ///
-/// That rule is why the output is line-based (`ITEM: ...`) rather than JSON. A
-/// 1B model emits valid JSON reliably enough on a laptop and unreliably on a
-/// phone, and a strict parse failure means a fallback receipt. Heads Up made
-/// the same trade for the same reason and it held up under live use.
+/// The measured step and duration lines are built here and flagged
+/// [ReceiptLine.measured], so a model that writes its own `12x STEPS` line can
+/// print next to the pedometer's real count without ever replacing it. An
+/// invented number is worse than a dull one: the person holding the receipt
+/// knows exactly how many steps they took, and a receipt that lies about it is
+/// a broken joke.
+///
+/// That rule is also why the output is line-based (`ITEM: 3x ...`) rather than
+/// JSON. A small model emits valid JSON often enough on a laptop and unreliably
+/// on a phone, and a strict parse failure means a fallback receipt. Heads Up
+/// made the same trade for the same reason and it held up under live use.
 ///
 /// Prompt construction, parsing and validation are pure and side-effect free so
-/// they can be unit tested without the ~557 MB model. Only [printReceipt]
+/// they can be unit tested without the ~356 MB model. Only [printReceipt]
 /// touches the inference engine.
 library;
 
@@ -72,7 +79,6 @@ Measured facts (never invent a different number):
 $factsBlock
 
 Rules:
-- ALL CAPS, dry, deadpan, faintly absurd. Think receipt for a feeling.
 - WALKTYPE must be exactly one of: ${kWalkTypes.join(', ')}.
 - 4 to 6 item lines. Each is a thing the customer was charged for.
 - Every item line starts with a quantity and x, like "3x BIRD THAT SAW YOU".
@@ -83,6 +89,7 @@ Rules:
 - NATURE is one line about what being offline achieved for the natural world.
   It must start with "${facts.minutes} MINUTES".
 - Never mention weather, calories, or the model itself.
+- Answer immediately. No thinking, no preamble, no commentary.
 
 Reply in exactly this format and nothing else:
 WALKTYPE: ESCAPE

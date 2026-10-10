@@ -66,14 +66,15 @@ class ModelSpec {
 
   static const ModelSpec qwen3 = ModelSpec(
     id: 'qwen3_0_6b',
-    label: 'Qwen3 0.6B (INT4)',
+    label: 'Qwen3 0.6B (INT4) - thinking model',
     repo: 'litert-community/Qwen3-0.6B',
     file: 'Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm',
     modelType: ModelType.qwen3,
     fileType: ModelFileType.litertlm,
     sizeMb: 329,
     requiresToken: false,
-    note: 'No account, no token, no licence click. Clone and run.',
+    note: 'No account, no token. But it thinks before it answers, and there '
+        'is no way to stop it here.',
   );
 
   static const ModelSpec smolLM2 = ModelSpec(
@@ -85,7 +86,8 @@ class ModelSpec {
     fileType: ModelFileType.litertlm,
     sizeMb: 356,
     requiresToken: false,
-    note: 'Ungated and the fastest on a weak phone, at the cost of wit.',
+    note: 'The default: not a thinking model, ungated, and fast enough to '
+        'answer between two taps.',
   );
 
   static const ModelSpec gemma3 = ModelSpec(
@@ -103,8 +105,9 @@ class ModelSpec {
 
   static const List<ModelSpec> all = [qwen3, smolLM2, gemma3];
 
-  /// The default, because it needs nothing from the person running it.
-  static const ModelSpec defaultSpec = qwen3;
+  /// The default, because it needs nothing from the person running it *and*
+  /// actually answers: Qwen3 is the thinking-model trap described on its spec.
+  static const ModelSpec defaultSpec = smolLM2;
 
   static ModelSpec byId(String id) =>
       all.firstWhere((m) => m.id == id, orElse: () => defaultSpec);

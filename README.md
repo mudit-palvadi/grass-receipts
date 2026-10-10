@@ -186,8 +186,8 @@ anyone.
 
 | Model | Size | Credentials |
 | --- | --- | --- |
-| **Qwen3 0.6B (INT4)** - default | 329 MB | none |
-| **SmolLM2 360M Instruct** | 356 MB | none |
+| **SmolLM2 360M Instruct** - default | 356 MB | none |
+| **Qwen3 0.6B (INT4)** | 329 MB | none, but see below |
 | **Gemma 3 1B-IT (INT4)** | 529 MB | HF token, licence accepted |
 
 The default needs **no Hugging Face account and no token**, so a fresh clone
@@ -210,32 +210,44 @@ Gemma 3 1B    -> HTTP 401  (licence not accepted)
 
 ### The Qwen3 thinking trap
 
-**Qwen3 is a thinking model**, and by default it will not stop thinking. The
-first receipt on a real device came back as a template receipt saying "the
-model returned too few lines", and the log showed why:
+**Qwen3 is a hybrid thinking model, and on this stack there is no way to turn
+thinking off.**
+
+The first receipt on a real device came back as a template receipt saying "the
+model returned too few lines". The log named the reason:
 
 ```
-ReceiptService: rejected (tooLong) on both attempts.
-raw: <|channel|>thought | Okay<channel|> ... SIGNOFF: Come back tomorrow...
+ReceiptService: rejected (tooFewLines) on both attempts.
+raw: <|channel>thought | W<channel|><|channel>thought | ALK<channel|> ...
 ```
 
-Every token of its 512-token budget went into `thought` blocks, so the
-actual receipt never appeared.
+Every token of its 512-token budget went into `thought` blocks, so the receipt
+itself never appeared.
 
-Two fixes, both needed:
+Two things were tried, and one of them does not work:
 
 1. **Ask the chat API, not the raw session.** `flutter_gemma`'s `InferenceChat`
    appends ` /no_think` to the prompt for Qwen3 when `isThinking: false`
-   (chat.dart:167). The raw `InferenceModelSession` has no `modelType`
-   parameter, so it cannot do this — which is why this project uses
-   `createChat()` instead of `createSession()`.
-2. **Strip the markers anyway.** `_cleanModelOutput` removes `think` blocks
-   and channel markers on every turn, because a 0.6B model ignores
-   instructions inconsistently and one stray marker breaks a line-based parse.
+   (chat.dart:167), and the raw `InferenceModelSession` has no `modelType`
+   parameter so it cannot. This project uses `createChat()`. It is necessary
+   and **not sufficient**.
+2. **`/no_think` is a prompt-level trick**, and it only works if the runtime's
+   chat template honours it. For a `.litertlm` file, grepping
+   `flutter_gemma_litertlm` for `enableThinking`, `no_think` or `extraContext`
+   returns **nothing** — the engine never wires thinking off at all. On a real
+   device Qwen3 still thinks until it runs out of budget.
 
-This is also why the fallback exists and why the UI says "Template receipt
-printed: ... Your steps and minutes are still the real ones" instead of hiding
-it. A silent failure here would have looked like a working app with bad jokes.
+So the default is SmolLM2 360M, which is not a thinking model and answers
+between two taps. Qwen3 stays selectable because it is the one to switch to if
+`enable_thinking` support lands upstream, and because a receipt that names its
+model should be honest about which ones do not work.
+
+`_cleanModelOutput` still strips `think` blocks and channel markers on every
+turn, because a model that ignores instructions once breaks a line-based parse
+silently otherwise.
+
+The fallback is what made this findable at all. Without it, the app would have
+looked like it worked and merely produced dull receipts.
 
 ## Running it
 
