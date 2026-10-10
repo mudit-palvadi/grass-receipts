@@ -48,3 +48,6 @@ app.*.map.json
 /android/build/
 /android/.gradle/
 /android/local.properties
+
+# uiautomator dumps pulled while finding button bounds
+test/golden/ui*.xml
