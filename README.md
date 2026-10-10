@@ -133,30 +133,35 @@ because the fallback reason is printed on screen.
 
 ## The one rule that matters
 
-**The model never decides a number.**
+**The phone measures. The model judges. And the model's numbers are bounded,
+not trusted.**
 
 Steps, minutes and the time band are measured by the phone and passed into the
-prompt as facts. The model writes the jokes and nothing else, and the two
-measured lines are built in Dart and prepended to whatever comes back. A model
-that decides to print `999x STEPS` gets to keep that line, labelled unmeasured,
-but it cannot touch the pedometer's 1234.
+prompt as facts. The model supplies the verdict, the quantities and the nature
+line — and each quantity is checked for being *possible* rather than *correct*:
 
-An invented number is worse than a dull one: the person holding the receipt
-knows exactly how many steps they took, and a receipt that lies about it is a
-broken joke. The `ReceiptLine.measured` flag exists so a reader can tell the
-difference.
+    quantity <= 1 + minutes
 
-The same rule licensed the output format. This project answers in
+A ten-minute walk cannot claim twenty birds. Nobody knows how many birds there
+were, so the check cannot verify a quantity; it can still reject one that is
+impossible. A claim of 999 steps on a 43-minute walk is thrown out entirely.
+
+The measured step and duration lines are built in Dart and flagged
+[ReceiptLine.measured], so a model that writes its own `12x STEPS` line prints
+next to the pedometer's real count without ever replacing it. A receipt that
+lies about a number the walker knows is a broken joke.
+
+This is also why the output is line-based rather than JSON:
 
 ```
-ITEM: BIRD THAT SAW YOU
+ITEM: 3x BIRD THAT SAW YOU
 REVIEW: 3 stars. Great breeze, no wifi.
 SIGNOFF: Come back tomorrow. Grass misses you.
 ```
 
-not JSON. A 1B-class model emits valid JSON often enough on a laptop and
-unreliably on a phone, and a strict parse failure means a fallback receipt —
-so the format is deliberately the one that fails least.
+A 1B-class model emits valid JSON often enough on a laptop and unreliably on a
+phone, and a strict parse failure means a fallback receipt — so the format is
+deliberately the one that fails least.
 
 ## Why open
 

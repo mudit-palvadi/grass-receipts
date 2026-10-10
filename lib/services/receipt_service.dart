@@ -71,6 +71,13 @@ class ReceiptService {
     // minutes to happen in.
     final maxQty = 1 + facts.minutes;
 
+    // The example carries this walk's own numbers, including its own verdict.
+    // A hardcoded "43 MINUTES" in an example is copied verbatim by a small
+    // model, and the copy then fails the very rule it was meant to show — which
+    // is exactly what happened on device: a 20-second walk printed the
+    // template receipt because the model echoed "43 MINUTES".
+    final exampleWalkType = Receipt.verdictFor(facts).walkType;
+
     return '''
 You are a thermal receipt printer that went to comedy school.
 Turn one person's walk into a receipt for goods and services they did not buy.
@@ -87,18 +94,18 @@ Rules:
 - Keep every line under $maxItemLength characters, including the quantity.
 - Every price is \$0.00. Never a number other than zero.
 - NATURE is one line about what being offline achieved for the natural world.
-  It must start with "${facts.minutes} MINUTES".
+  It must start with "${facts.minutesLabel}".
 - Never mention weather, calories, or the model itself.
 - Answer immediately. No thinking, no preamble, no commentary.
 
 Reply in exactly this format and nothing else:
-WALKTYPE: ESCAPE
+WALKTYPE: $exampleWalkType
 ITEM: 3x BIRD THAT SAW YOU
 ITEM: 1x BENCH OCCUPIED, BRIEFLY
 ITEM: 1x ONE (1) SMALL MOMENT OF PERSPECTIVE
 REVIEW: 3 stars. Great breeze, no wifi.
 SIGNOFF: Come back tomorrow. Grass misses you.
-NATURE: 43 MINUTES OFF THE GRID. THE BIRDS WON.
+NATURE: ${facts.minutesLabel} OFF THE GRID. THE BIRDS WON.
 ''';
   }
 
@@ -208,9 +215,25 @@ NATURE: 43 MINUTES OFF THE GRID. THE BIRDS WON.
     // The nature line has to quote the measured minutes. A line that says
     // "43 MINUTES" about a 6-minute walk is the decoration this rule exists to
     // stop, and quoting the number is what ties it to the walk.
-    if (!_quotesNumber(nature, facts.minutes)) return null;
+    //
+    // A walk under a minute has no number to quote, so both the prompt and this
+    // check fall back to the phrase "LESS THAN A MINUTE" instead.
+    if (!_quotesDuration(nature, facts)) return null;
 
     return ReceiptVerdict(walkType: walkType, nature: nature);
+  }
+
+  /// Whether [text] refers to the walk's actual duration.
+  ///
+  /// Two forms are accepted, matching the two the prompt can ask for: the
+  /// minutes as a whole number, or "LESS THAN A MINUTE" for a sub-minute walk.
+  /// A model that writes "430 MINUTES", or "43 MINUTES" on the wrong walk,
+  /// fails.
+  static bool _quotesDuration(String text, WalkFacts facts) {
+    if (facts.minutes == 0) {
+      return text.toUpperCase().contains('LESS THAN A MINUTE');
+    }
+    return _quotesNumber(text, facts.minutes);
   }
 
   /// Whether [text] contains [n] as a whole number, not as a digit inside a
@@ -242,7 +265,7 @@ NATURE: 43 MINUTES OFF THE GRID. THE BIRDS WON.
     final nature = field(raw, 'NATURE');
     if (nature == null) return ReceiptRejection.missingNature;
     if (nature.length > maxFooterLength) return ReceiptRejection.tooLong;
-    if (!_quotesNumber(nature, facts.minutes)) {
+    if (!_quotesDuration(nature, facts)) {
       return ReceiptRejection.natureWithoutMinutes;
     }
     if (field(raw, 'REVIEW') == null || field(raw, 'SIGNOFF') == null) {
@@ -327,6 +350,7 @@ NATURE: 43 MINUTES OFF THE GRID. THE BIRDS WON.
         return Receipt.template(facts);
       }
 
+      debugPrint('ReceiptService: printing with ${spec.id} (${spec.label})');
       final model = await FlutterGemma.getActiveModel();
 
       // The chat API, not the raw session. It is the layer that knows about

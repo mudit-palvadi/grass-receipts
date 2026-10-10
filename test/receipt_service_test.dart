@@ -196,6 +196,38 @@ void main() {
       );
     });
 
+    test('asks for a phrase instead of a number on a sub-minute walk', () {
+      // A 20-second walk has no minutes to quote, so the prompt must not ask
+      // for "0 MINUTES" and the check must accept the phrase instead. This is
+      // the bug that made the first device run print a template receipt: the
+      // model copied the hardcoded "43" out of the example.
+      final prompt = service.buildPrompt(factsWith(outMinutes: 0));
+
+      expect(prompt, contains('LESS THAN A MINUTE'));
+      expect(prompt, isNot(contains('0 MINUTES')));
+
+      // A sub-minute walk also has maxQty 1, so its fixture is its own.
+      final subMinute = '''
+WALKTYPE: STEP OUT
+ITEM: 1x THE FRONT DOOR
+ITEM: 1x COLD AIR, BRIEFLY
+ITEM: 1x A CHANGE OF MIND
+REVIEW: 2 stars. Did not get far.
+SIGNOFF: Come back tomorrow. Grass misses you.
+NATURE: LESS THAN A MINUTE OFF THE GRID.
+''';
+      expect(service.parseOutput(subMinute, factsWith(outMinutes: 0)),
+          isNotNull);
+      // "0 MINUTES" on a 0-minute walk must not pass: the phrase is the form.
+      expect(
+        service.parseOutput(
+          subMinute.replaceFirst('LESS THAN A MINUTE', '0 MINUTES'),
+          factsWith(outMinutes: 0),
+        ),
+        isNull,
+      );
+    });
+
     test('rejects a missing nature line', () {
       final noNature =
           wellFormed.replaceFirst(RegExp(r'NATURE:.*\n'), '');

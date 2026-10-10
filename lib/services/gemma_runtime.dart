@@ -161,6 +161,12 @@ class GemmaRuntime {
   Stream<ModelState> get changes => _changes.stream;
 
   /// Starts the engine. Safe to call repeatedly.
+  ///
+  /// When the engine comes up with no model loaded — the usual case on a fresh
+  /// install — the default model is started automatically rather than waiting
+  /// for someone to find the setup button. The download is the one thing that
+  /// has to happen before the app can do anything at all, so making it a
+  /// step the user has to discover is how a first launch ends on a blank screen.
   Future<void> initialise() async {
     if (_initialised) return;
 
@@ -175,9 +181,20 @@ class GemmaRuntime {
       // again, which is the common path after the first run.
       try {
         await FlutterGemma.getActiveModel();
+        debugPrint('GemmaRuntime: ${spec.id} (${spec.label}) already installed.');
         _emit(const ModelState(status: ModelStatus.ready, progress: 1));
       } catch (_) {
-        _emit(const ModelState(status: ModelStatus.notDownloaded));
+        // A gated repo with no token would fail every time, so leave that one
+        // for the user to act on rather than starting a download that cannot
+        // succeed. The ungated defaults have no such gate.
+        if (spec.requiresToken && (_token?.isEmpty ?? true)) {
+          debugPrint('GemmaRuntime: ${spec.id} is gated; waiting for a token.');
+          _emit(const ModelState(status: ModelStatus.notDownloaded));
+          return;
+        }
+        debugPrint('GemmaRuntime: ${spec.id} not installed, downloading '
+            '${spec.sizeMb} MB automatically.');
+        await ensureModelInstalled();
       }
     } catch (e) {
       debugPrint('GemmaRuntime: engine init failed: $e');

@@ -37,6 +37,15 @@ class WalkFacts {
   /// rather than printing "0x STEPS".
   final bool stepSensorAvailable;
 
+  /// How the receipt refers to the walk's length in prose.
+  ///
+  /// A walk shorter than a minute cannot be called "0 MINUTES" without reading
+  /// like a bug rather than a joke, so it gets a phrase instead — and the
+  /// prompt's example has to use whichever form applies, or a small model will
+  /// quietly copy the example and print the wrong number.
+  String get minutesLabel =>
+      minutes == 0 ? 'LESS THAN A MINUTE' : '$minutes MINUTES';
+
   int get minutes => endedAt.difference(startedAt).inMinutes;
 
   /// A broad description of when the walk happened, for the receipt header.
@@ -124,15 +133,22 @@ class ReceiptVerdict {
   final String nature;
 }
 
-/// The verdicts the model is allowed to reach. Closed on purpose: a free-text
-/// classification cannot be validated, printed or compared against the facts.
+/// The verdicts the model is allowed to reach, and the ones a rules engine
+/// reaches instead on a fallback receipt — one canonical list, because the
+/// prompt's example is derived from [Receipt.verdictFor], and an example the
+/// model is not allowed to copy is a trap rather than a demonstration.
+///
+/// Closed on purpose: a free-text classification cannot be validated, printed
+/// or compared against the facts.
 const List<String> kWalkTypes = [
+  'STEP OUT',
   'ERRAND',
+  'A SIT',
+  'LOOP',
+  'A PROPER WALK',
   'WANDER',
   'ESCAPE',
-  'A SIT',
   'COMMUTE',
-  'LOOP',
 ];
 
 /// A finished receipt.
