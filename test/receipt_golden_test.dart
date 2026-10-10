@@ -33,9 +33,12 @@ Receipt sampleReceipt() => Receipt(
         ReceiptLine(qty: 1234, item: 'STEPS, ON YOUR GOOD LEG'),
         ReceiptLine(qty: 43, item: 'MINUTES AWAY FROM THE SCREEN'),
         ReceiptLine(qty: 7, item: 'MINUTES OF DOING NOTHING AT ALL'),
-        ReceiptLine(qty: 3, item: 'BIRD THAT SAW YOU'),
+        // Quantities are now the model's own: line lengths are chosen to sit at
+        // the 32-column limit, so the golden also checks the widest legal
+        // receipt still fits the paper.
+        ReceiptLine(qty: 44, item: 'BIRD THAT SAW YOU'),
         ReceiptLine(qty: 1, item: 'BENCH OCCUPIED, BRIEFLY'),
-        ReceiptLine(qty: 1, item: 'BREEZE, MILD, SUSPICIOUS'),
+        ReceiptLine(qty: 2, item: 'BREEZE, MILD, SUSPICIOUS'),
       ],
       review: '3 stars. Great breeze, no wifi.',
       signoff: 'Come back tomorrow. Grass misses you.',
@@ -44,6 +47,10 @@ Receipt sampleReceipt() => Receipt(
         endedAt: kEndedAt,
         steps: 1234,
         stillMinutes: 7,
+      ),
+      verdict: const ReceiptVerdict(
+        walkType: 'ESCAPE',
+        nature: '43 MINUTES OFF THE GRID. THE BIRDS WON.',
       ),
     );
 

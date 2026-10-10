@@ -119,7 +119,10 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       _receipt = null;
     });
 
-    final receipt = await _receipts.printReceipt(facts: facts);
+    final receipt = await _receipts.printReceipt(
+      facts: facts,
+      spec: _runtime.spec,
+    );
     if (!mounted) return;
     setState(() {
       _receipt = receipt;
@@ -334,6 +337,11 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   Widget _fallbackNotice(ReceiptRejection? rejection) {
     final reason = switch (rejection) {
       ReceiptRejection.tooFewLines => 'the model returned too few lines',
+      ReceiptRejection.missingVerdict => 'the model did not name a walk type',
+      ReceiptRejection.missingNature => 'the model returned no nature line',
+      ReceiptRejection.natureWithoutMinutes =>
+        'the nature line ignored the minutes',
+      ReceiptRejection.missingQuantity => 'an item line had no quantity',
       ReceiptRejection.tooLong => 'a line was too long for the roll',
       ReceiptRejection.missingFooter => 'the model skipped the review',
       ReceiptRejection.duplicateItem => 'the model repeated itself',

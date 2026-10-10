@@ -69,11 +69,17 @@ class ReceiptPaper extends StatelessWidget {
             _factRow('WENT OUTSIDE', _time(facts.startedAt)),
             _factRow('CAME BACK', _time(facts.endedAt)),
             _factRow('TIME BAND', facts.timeBand),
+            // The model's verdict, printed between the measured facts and the
+            // items. It is the line a reader can disagree with, which is the
+            // point: the phone measured, the model judged.
+            _factRow('WALK TYPE', receipt.verdict.walkType),
             const DashedReceiptRule(height: 16, color: kPaperInk),
             for (final line in receipt.lines) _itemRow(line),
             const DashedReceiptRule(height: 16, color: kPaperInk),
             _totalRow(),
             const SizedBox(height: 12),
+            _footer('WHAT THE GRID MISSED', receipt.verdict.nature),
+            const SizedBox(height: 8),
             _footer('YOUR REVIEW', receipt.review),
             const SizedBox(height: 8),
             _footer('SIGNOFF', receipt.signoff),

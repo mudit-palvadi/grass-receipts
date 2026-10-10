@@ -73,6 +73,64 @@ appears last, which is also the correct order for a thermal roll.
 - Both steps are covered by `test/receipt_golden_test.dart`, whose PNG is the
   picture in the write-up.
 
+## What the AI model is actually for
+
+The honest answer, because it is the question a submission should be able to
+survive: **the sensors measure, and the model judges.**
+
+The phone measures steps, minutes, time band and the longest standstill. It
+cannot decide what kind of walk those add up to, how many times something
+plausibly happened, or what the offline minutes meant for the natural world.
+Those are the model's job, and the receipt reads as a result:
+
+```
+WENT OUTSIDE                       4:04 PM
+WALK TYPE                          ESCAPE
+1234x STEPS, ON YOUR GOOD LEG
+43x   MINUTES AWAY FROM THE SCREEN
+ 7x   MINUTES OF DOING NOTHING AT ALL
+44x   BIRD THAT SAW YOU
+ 1x   BENCH OCCUPIED, BRIEFLY
+TOTAL                        $0.00
+WHAT THE GRID MISSED
+43 MINUTES OFF THE GRID. THE BIRDS WON.
+```
+
+Four things come from the model and not from the phone:
+
+1. **A verdict on the walk** - `WALKTYPE`, one of a closed set the model is
+   allowed to reach. It is the line a reader can disagree with, which is the
+   point.
+2. **Item quantities.** The model writes `44x BIRD THAT SAW YOU`, so a
+   three-hour walk and a bathroom break produce receipts that do not look
+   interchangeable.
+3. **The nature line**, which must quote the measured minutes.
+4. **The comedy** - item names, review, signoff.
+
+### Why the quantities are bounded rather than trusted
+
+The model chooses them, so its output cannot be fully verified: nobody knows
+how many birds there were. What *can* be checked is whether a number is
+**possible**, and that is the one rule enforced in `parseOutput`:
+
+    quantity <= 1 + minutes
+
+A ten-minute walk cannot claim twenty birds. The bound is also stated in the
+prompt, so the model is told what it may claim and then held to it.
+
+`ReceiptLine.measured` records which lines are the phone's. The measured step
+count and duration are built in Dart and prepended, so the model can add its
+own `12x STEPS` line but can never touch the pedometer's 1234 - and in tests a
+claim of 999 steps is rejected outright for being impossible.
+
+The nature line has its own check: it must contain the measured minutes as a
+whole number. A line that says "43 MINUTES" about a six-minute walk is
+decoration pretending to be fact, and that is exactly what this rejects.
+
+All of this is covered by `receipt_service_test.dart` - including the boundary
+(44 is allowed on a 43-minute walk, 45 is not) and the failure modes by name,
+because the fallback reason is printed on screen.
+
 ## The one rule that matters
 
 **The model never decides a number.**
@@ -149,6 +207,35 @@ Qwen3 0.6B    -> HTTP 206  (partial content, served)
 SmolLM2 360M  -> HTTP 206  (partial content, served)
 Gemma 3 1B    -> HTTP 401  (licence not accepted)
 ```
+
+### The Qwen3 thinking trap
+
+**Qwen3 is a thinking model**, and by default it will not stop thinking. The
+first receipt on a real device came back as a template receipt saying "the
+model returned too few lines", and the log showed why:
+
+```
+ReceiptService: rejected (tooLong) on both attempts.
+raw: <|channel|>thought | Okay<channel|> ... SIGNOFF: Come back tomorrow...
+```
+
+Every token of its 512-token budget went into `thought` blocks, so the
+actual receipt never appeared.
+
+Two fixes, both needed:
+
+1. **Ask the chat API, not the raw session.** `flutter_gemma`'s `InferenceChat`
+   appends ` /no_think` to the prompt for Qwen3 when `isThinking: false`
+   (chat.dart:167). The raw `InferenceModelSession` has no `modelType`
+   parameter, so it cannot do this — which is why this project uses
+   `createChat()` instead of `createSession()`.
+2. **Strip the markers anyway.** `_cleanModelOutput` removes `think` blocks
+   and channel markers on every turn, because a 0.6B model ignores
+   instructions inconsistently and one stray marker breaks a line-based parse.
+
+This is also why the fallback exists and why the UI says "Template receipt
+printed: ... Your steps and minutes are still the real ones" instead of hiding
+it. A silent failure here would have looked like a working app with bad jokes.
 
 ## Running it
 

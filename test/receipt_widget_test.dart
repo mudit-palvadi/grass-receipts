@@ -29,6 +29,10 @@ WalkFacts facts({bool stepSensor = true}) => WalkFacts(
     );
 
 /// The receipt a working model would return, with lines at the length limits.
+///
+/// The model supplies the verdict and the item quantities itself, so those are
+/// the parts whose widths matter: a quantity the model chose is part of the
+/// 32-column roll, not decoration around it.
 Receipt modelReceipt() => Receipt(
       lines: const [
         ReceiptLine(qty: 1234, item: 'STEPS, ON YOUR GOOD LEG'),
@@ -41,6 +45,10 @@ Receipt modelReceipt() => Receipt(
       review: 'A review that runs to thirty nine chars ok',
       signoff: 'Come back tomorrow. Grass misses you.',
       facts: facts(),
+      verdict: const ReceiptVerdict(
+        walkType: 'ESCAPE',
+        nature: '43 MINUTES OFF THE GRID. THE BIRDS WON.',
+      ),
     );
 
 void main() {

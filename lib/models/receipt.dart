@@ -74,11 +74,24 @@ class ReceiptLine {
 /// something unusable is exactly the kind of honest number this project should
 /// be able to quote.
 enum ReceiptRejection {
-  /// Fewer than [ReceiptService.minItemLines] ITEM lines came back.
+  /// Fewer than the minimum item lines came back.
   tooFewLines,
 
-  /// A line was too long to print on a 32-column receipt.
+  /// WALKTYPE missing, or a verdict the model was not allowed to reach.
+  missingVerdict,
+
+  /// NATURE line missing.
+  missingNature,
+
+  /// NATURE did not quote the measured minutes, so it was decoration.
+  natureWithoutMinutes,
+
+  /// A line too long for a 32-column receipt, or a quantity impossible for
+  /// the walk.
   tooLong,
+
+  /// An item line carried no quantity, so there was nothing to print.
+  missingQuantity,
 
   /// The REVIEW or SIGNOFF line was missing.
   missingFooter,
@@ -90,6 +103,38 @@ enum ReceiptRejection {
   unavailable,
 }
 
+/// What the receipt says about the walk, beyond the numbers.
+///
+/// The model supplies all three, and all three are things a template could not
+/// produce from the same facts:
+///
+///  * [walkType] — its verdict on the walk's shape.
+///  * [nature] — what the offline minutes did for the natural world.
+///  * the item lines and quantities.
+class ReceiptVerdict {
+  const ReceiptVerdict({
+    required this.walkType,
+    required this.nature,
+  });
+
+  /// The model's read of the walk, one of [kWalkTypes].
+  final String walkType;
+
+  /// One line about what being offline for the measured minutes achieved.
+  final String nature;
+}
+
+/// The verdicts the model is allowed to reach. Closed on purpose: a free-text
+/// classification cannot be validated, printed or compared against the facts.
+const List<String> kWalkTypes = [
+  'ERRAND',
+  'WANDER',
+  'ESCAPE',
+  'A SIT',
+  'COMMUTE',
+  'LOOP',
+];
+
 /// A finished receipt.
 class Receipt {
   const Receipt({
@@ -97,14 +142,18 @@ class Receipt {
     required this.review,
     required this.signoff,
     required this.facts,
+    required this.verdict,
     this.rejected,
   });
 
   /// Builds the template receipt used whenever model output is rejected.
   ///
   /// It is deliberately dull but complete: a receipt with a blank item list is
-  /// a broken joke, and this project has exactly one screen to get right.
+  /// a broken joke, and this project has exactly one screen to get right. The
+  /// verdict and nature line are derived from the facts rather than invented,
+  /// so a fallback receipt still says something true about the walk.
   factory Receipt.template(WalkFacts facts) {
+    final verd = verdictFor(facts);
     final lines = <ReceiptLine>[
       if (facts.stepSensorAvailable)
         ReceiptLine(
@@ -129,17 +178,44 @@ class Receipt {
       review: 'Receipt printer unavailable. Walk happened anyway.',
       signoff: 'Come back tomorrow. Grass misses you.',
       facts: facts,
+      verdict: verd,
       rejected: ReceiptRejection.unavailable,
     );
   }
 
+  /// The verdict a rules engine would reach, for the template receipt.
+  ///
+  /// Deliberately crude — one long still stretch means a sit, a long walk means
+  /// a loop — because the point of a fallback is to be honest, not clever. It
+  /// is also the yardstick the model's own verdict is read against: when the
+  /// model calls a 45-minute walk with two long stops a "COMMUTE", that is
+  /// visible rather than hidden.
+  static ReceiptVerdict verdictFor(WalkFacts facts) {
+    final walkType = switch (facts) {
+      WalkFacts(minutes: <= 2) => 'STEP OUT',
+      WalkFacts(minutes: final m) when facts.stillMinutes > m / 2 => 'A SIT',
+      WalkFacts(minutes: >= 45) => 'A PROPER WALK',
+      WalkFacts(minutes: >= 20) => 'LOOP',
+      _ => 'ERRAND',
+    };
+    return ReceiptVerdict(walkType: walkType, nature: templateNature(facts));
+  }
+
+  /// The nature line the template prints: the minutes, stated plainly.
+  static String templateNature(WalkFacts facts) =>
+      '${facts.minutes} min off the grid. ${facts.minutes} min of you not '
+      'being anywhere near it.';
+
   final List<ReceiptLine> lines;
 
-  /// The receipt's one-star-to-five review of the customer's outing.
+  /// A one-star-to-five review of the customer's outing.
   final String review;
 
   /// The closing line, always "come back tomorrow".
   final String signoff;
+
+  /// The walk's type and its effect on the natural world, as the model judged.
+  final ReceiptVerdict verdict;
 
   /// The measured facts this receipt describes.
   final WalkFacts facts;
